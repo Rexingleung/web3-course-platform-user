@@ -15,7 +15,8 @@
     "zustand": "^4.4.1",
     "ethers": "^6.7.1",
     "lucide-react": "^0.263.1",
-    "react-hot-toast": "^2.4.1"
+    "react-hot-toast": "^2.4.1",
+    "wtf-lll-wallet": "^0.0.4"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
