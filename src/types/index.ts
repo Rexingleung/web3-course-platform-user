@@ -1,60 +1,82 @@
-export interface Course {
-  id?: number;
-  courseId: number;
-  title: string;
-  description: string;
-  author: string;
-  price: string;
-  createdAt: number;
-  updatedAt?: string;
+// 网络配置类型
+export interface NetworkConfig {
+  chainId: string;
+  chainName: string;
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+  rpcUrls: string[];
+  blockExplorerUrls?: string[];
 }
 
-export interface Purchase {
-  id?: number;
-  courseId: number;
-  buyer: string;
-  price: string;
-  transactionHash?: string;
-  purchasedAt?: string;
-}
-
-export interface CreateCourseRequest {
-  title: string;
-  description: string;
-  price: string;
-}
-
+// 钱包状态接口
 export interface WalletState {
-  account: string | null;
+  address: string | null;
+  balance: string;
   isConnected: boolean;
   isConnecting: boolean;
-  balance: string;
+  networkId: string | null;
+  ensName: string | null;
+  ensAvatar: string | null;
+}
+
+// 钱包操作接口
+export interface WalletActions {
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
-  updateBalance: () => Promise<void>;
+  switchNetwork: (chainId: string) => Promise<void>;
+  updateWalletInfo: () => Promise<void>;
+  getENSInfo: (address: string) => Promise<{ name: string | null; avatar: string | null }>;
 }
 
+// 完整的钱包 Store 接口
+export interface WalletStore extends WalletState, WalletActions {}
+
+// 支持的网络枚举
+export enum SupportedNetworks {
+  ETHEREUM_MAINNET = '0x1',
+  ETHEREUM_SEPOLIA = '0xaa36a7'
+}
+
+// 课程相关类型（保持现有的）
+export interface Course {
+  id: number;
+  title: string;
+  description: string;
+  instructor: string;
+  duration: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  price: string;
+  originalPrice?: string;
+  discount?: number;
+  rating: number;
+  studentsCount: number;
+  image: string;
+  category: string;
+  isPurchased?: boolean;
+  completionPercentage?: number;
+}
+
+export interface PurchasedCourse extends Course {
+  purchaseDate: Date;
+  progress: number;
+  lastAccessed: Date;
+  certificateEarned: boolean;
+}
+
+// 合约相关类型（保持现有的）
 export interface ContractState {
   contract: any;
-  provider: any;
-  signer: any;
-  isInitialized: boolean;
-  initializeContract: () => Promise<void>;
-  createCourse: (title: string, description: string, price: string) => Promise<any>;
-  purchaseCourse: (courseId: number, price: string) => Promise<any>;
-  getCourse: (courseId: number) => Promise<Course>;
-  getUserPurchasedCourses: (userAddress: string) => Promise<number[]>;
-  hasUserPurchasedCourse: (courseId: number, userAddress: string) => Promise<boolean>;
+  isLoading: boolean;
+  error: string | null;
 }
 
-// Global window type extensions
-declare global {
-  interface Window {
-    ethereum?: {
-      isMetaMask?: boolean;
-      request: (args: { method: string; params?: any[] }) => Promise<any>;
-      on: (event: string, callback: (...args: any[]) => void) => void;
-      removeListener: (event: string, callback: (...args: any[]) => void) => void;
-    };
-  }
+export interface ContractActions {
+  initializeContract: () => Promise<void>;
+  purchaseCourse: (courseId: number) => Promise<void>;
+  getPurchasedCourses: () => Promise<Course[]>;
 }
+
+export interface ContractStore extends ContractState, ContractActions {}
