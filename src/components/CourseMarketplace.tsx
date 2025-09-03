@@ -8,8 +8,8 @@ import { formatEther, formatDate, formatAddress } from '../utils/format';
 import toast from 'react-hot-toast';
 
 export function CourseMarketplace() {
-  const { account, isConnected, updateBalance } = useWalletStore();
-  const { purchaseCourse, hasUserPurchasedCourse } = useContractStore();
+  const { address, isConnected, updateWalletInfo } = useWalletStore();
+  const { purchaseCourse } = useContractStore();
   
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,16 +23,17 @@ export function CourseMarketplace() {
       setCourses(allCourses);
       
       // Check purchase status for each course
-      if (account && isConnected) {
+      if (address && isConnected) {
         const purchasedSet = new Set<number>();
         for (const course of allCourses) {
           try {
-            const hasPurchased = await hasUserPurchasedCourse(course.courseId, account);
-            if (hasPurchased) {
-              purchasedSet.add(course.courseId);
-            }
+            // 这里需要根据实际的合约接口调整
+            // const hasPurchased = await hasUserPurchasedCourse(course.id, address);
+            // if (hasPurchased) {
+            //   purchasedSet.add(course.id);
+            // }
           } catch (error) {
-            console.error('Failed to check purchase status for course', course.courseId);
+            console.error('Failed to check purchase status for course', course.id);
           }
         }
         setPurchasedCourses(purchasedSet);
@@ -46,41 +47,41 @@ export function CourseMarketplace() {
   };
 
   const handlePurchase = async (course: Course) => {
-    if (!account || !isConnected) {
+    if (!address || !isConnected) {
       toast.error('请先连接钱包');
       return;
     }
 
-    if (purchasedCourses.has(course.courseId)) {
+    if (purchasedCourses.has(course.id)) {
       toast.error('你已经购买了这门课程');
       return;
     }
 
-    setPurchasingCourses(prev => new Set([...prev, course.courseId]));
+    setPurchasingCourses(prev => new Set([...prev, course.id]));
     
     try {
-      const result = await purchaseCourse(course.courseId, formatEther(course.price));
+      await purchaseCourse(course.id);
       
-      // Record purchase in backend
-      await apiService.recordPurchase({
-        courseId: course.courseId,
-        buyer: account,
-        transactionHash: result.transactionHash,
-        price: course.price
-      });
+      // Record purchase in backend if needed
+      // await apiService.recordPurchase({
+      //   courseId: course.id,
+      //   buyer: address,
+      //   transactionHash: result.transactionHash,
+      //   price: course.price
+      // });
       
       // Update purchased courses
-      setPurchasedCourses(prev => new Set([...prev, course.courseId]));
+      setPurchasedCourses(prev => new Set([...prev, course.id]));
       
       // Update wallet balance
-      await updateBalance();
+      await updateWalletInfo();
       
     } catch (error) {
       console.error('Purchase failed:', error);
     } finally {
       setPurchasingCourses(prev => {
         const newSet = new Set(prev);
-        newSet.delete(course.courseId);
+        newSet.delete(course.id);
         return newSet;
       });
     }
@@ -88,7 +89,7 @@ export function CourseMarketplace() {
 
   useEffect(() => {
     loadCourses();
-  }, [account, isConnected]);
+  }, [address, isConnected]);
 
   if (!isConnected) {
     return (
@@ -141,13 +142,13 @@ export function CourseMarketplace() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => {
-            const isPurchased = purchasedCourses.has(course.courseId);
-            const isPurchasing = purchasingCourses.has(course.courseId);
-            const isOwnCourse = account?.toLowerCase() === course.author.toLowerCase();
+            const isPurchased = purchasedCourses.has(course.id);
+            const isPurchasing = purchasingCourses.has(course.id);
+            const isOwnCourse = address?.toLowerCase() === course.instructor.toLowerCase();
             
             return (
               <div
-                key={course.courseId}
+                key={course.id}
                 className="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-10 transition-all duration-200"
               >
                 <div className="flex items-start justify-between mb-4">
@@ -155,7 +156,7 @@ export function CourseMarketplace() {
                     {course.title}
                   </h3>
                   <div className="glass-effect rounded-lg px-3 py-1 ml-4">
-                    <span className="text-white text-sm">#{course.courseId}</span>
+                    <span className="text-white text-sm">#{course.id}</span>
                   </div>
                 </div>
 
@@ -166,17 +167,17 @@ export function CourseMarketplace() {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center space-x-2 text-white opacity-80">
                     <DollarSign size={14} />
-                    <span className="text-sm">{formatEther(course.price)} ETH</span>
+                    <span className="text-sm">{course.price} ETH</span>
                   </div>
                   
                   <div className="flex items-center space-x-2 text-white opacity-80">
                     <Calendar size={14} />
-                    <span className="text-sm">{formatDate(course.createdAt)}</span>
+                    <span className="text-sm">{course.duration}</span>
                   </div>
                   
                   <div className="flex items-center space-x-2 text-white opacity-80">
                     <User size={14} />
-                    <span className="text-sm">{formatAddress(course.author)}</span>
+                    <span className="text-sm">{course.instructor}</span>
                   </div>
                 </div>
 
