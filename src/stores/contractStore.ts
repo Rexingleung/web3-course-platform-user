@@ -2,60 +2,60 @@ import { create } from 'zustand';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../utils/constants';
-import { ContractState, Course } from '../types';
+import { ContractStore, Course } from '../types';
 import { parseEther } from '../utils/format';
 
-const useContractStore = create<ContractState>((set, get) => ({
+const useContractStore = create<ContractStore>((set, get) => ({
   contract: null,
-  provider: null,
-  signer: null,
-  isInitialized: false,
+  isLoading: false,
+  error: null,
 
   initializeContract: async () => {
     if (!window.ethereum) {
-      toast.error('请安装 MetaMask 钱包');
+      const error = '请安装 MetaMask 钱包';
+      set({ error });
+      toast.error(error);
       return;
     }
 
     try {
+      set({ isLoading: true, error: null });
+      
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-      set({
-        contract,
-        provider,
-        signer,
-        isInitialized: true
-      });
-
+      set({ contract, isLoading: false });
       console.log('合约初始化成功');
     } catch (error: any) {
+      const errorMsg = '合约初始化失败';
       console.error('合约初始化失败:', error);
-      toast.error('合约初始化失败');
+      set({ error: errorMsg, isLoading: false });
+      toast.error(errorMsg);
     }
   },
 
-  createCourse: async (title: string, description: string, price: string) => {
-    // This method is not used in user frontend but kept for interface compatibility
-    throw new Error('Users cannot create courses');
-  },
-
-  purchaseCourse: async (courseId: number, price: string) => {
-    const { contract, isInitialized } = get();
+  purchaseCourse: async (courseId: number) => {
+    const { contract } = get();
     
-    if (!isInitialized || !contract) {
+    if (!contract) {
       await get().initializeContract();
     }
 
     try {
-      const priceWei = parseEther(price);
-      const tx = await contract.purchaseCourse(courseId, { value: priceWei });
+      set({ isLoading: true, error: null });
+      
+      // 这里需要根据实际合约接口调整
+      // 假设合约有一个 purchaseCourse 方法，需要传入课程ID和价格
+      const tx = await contract.purchaseCourse(courseId, { 
+        value: ethers.parseEther("0.01") // 示例价格，实际应该从课程信息获取
+      });
       
       toast.loading('购买课程中...', { id: 'purchase-course' });
       
       const receipt = await tx.wait();
       
+      set({ isLoading: false });
       toast.success('课程购买成功！', { id: 'purchase-course' });
       
       return {
@@ -63,64 +63,65 @@ const useContractStore = create<ContractState>((set, get) => ({
         gasUsed: receipt.gasUsed?.toString()
       };
     } catch (error: any) {
+      const errorMsg = error.reason || error.message || '购买课程失败';
       console.error('购买课程失败:', error);
-      toast.error(error.reason || error.message || '购买课程失败', { id: 'purchase-course' });
+      set({ error: errorMsg, isLoading: false });
+      toast.error(errorMsg, { id: 'purchase-course' });
       throw error;
     }
   },
 
-  getCourse: async (courseId: number): Promise<Course> => {
-    const { contract, isInitialized } = get();
+  getPurchasedCourses: async (): Promise<Course[]> => {
+    const { contract } = get();
     
-    if (!isInitialized || !contract) {
+    if (!contract) {
       await get().initializeContract();
     }
 
     try {
-      const courseData = await contract.getCourse(courseId);
+      set({ isLoading: true, error: null });
       
-      return {
-        courseId,
-        title: courseData[0],
-        description: courseData[1],
-        author: courseData[2],
-        price: courseData[3].toString(),
-        createdAt: Number(courseData[4])
-      };
+      // 这里需要根据实际合约接口调整
+      // 假设合约有一个方法可以获取用户购买的课程
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length === 0) {
+        throw new Error('请先连接钱包');
+      }
+      
+      const userAddress = accounts[0];
+      const purchasedCourseIds = await contract.getUserPurchasedCourses(userAddress);
+      
+      // 获取每个课程的详细信息
+      const courses: Course[] = [];
+      for (const courseId of purchasedCourseIds) {
+        try {
+          const courseData = await contract.getCourse(courseId);
+          courses.push({
+            id: Number(courseId),
+            title: courseData[0],
+            description: courseData[1],
+            instructor: courseData[2],
+            price: ethers.formatEther(courseData[3]),
+            duration: '待定', // 如果合约中没有这个字段
+            difficulty: 'Intermediate' as const,
+            rating: 4.5, // 默认值
+            studentsCount: 0, // 默认值
+            image: '/placeholder-course.jpg', // 默认图片
+            category: '区块链', // 默认分类
+            isPurchased: true,
+          });
+        } catch (error) {
+          console.error(`获取课程 ${courseId} 信息失败:`, error);
+        }
+      }
+      
+      set({ isLoading: false });
+      return courses;
     } catch (error: any) {
-      console.error('获取课程信息失败:', error);
-      throw error;
-    }
-  },
-
-  getUserPurchasedCourses: async (userAddress: string): Promise<number[]> => {
-    const { contract, isInitialized } = get();
-    
-    if (!isInitialized || !contract) {
-      await get().initializeContract();
-    }
-
-    try {
-      const courseIds = await contract.getUserPurchasedCourses(userAddress);
-      return courseIds.map((id: any) => Number(id));
-    } catch (error: any) {
-      console.error('获取用户购买课程失败:', error);
+      const errorMsg = error.message || '获取购买的课程失败';
+      console.error('获取购买的课程失败:', error);
+      set({ error: errorMsg, isLoading: false });
       return [];
-    }
-  },
-
-  hasUserPurchasedCourse: async (courseId: number, userAddress: string): Promise<boolean> => {
-    const { contract, isInitialized } = get();
-    
-    if (!isInitialized || !contract) {
-      await get().initializeContract();
-    }
-
-    try {
-      return await contract.hasUserPurchasedCourse(courseId, userAddress);
-    } catch (error: any) {
-      console.error('检查购买状态失败:', error);
-      return false;
     }
   },
 }));

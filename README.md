@@ -1,158 +1,206 @@
-# Web3 Course Platform - User Frontend
+# Web3 课程平台用户端 - 自定义钱包头部组件
 
-基于区块链的课程平台用户端，使用 React + TypeScript + Vite + Tailwind CSS 构建。
+## 🚀 最新更新
 
-## 功能特性
+### 移除 wtf-lll-wallet 包并实现自定义钱包组件
 
-- 🛒 **课程市场** - 浏览和购买课程
-- 📚 **已购课程** - 查看已购买的课程
-- 💰 **Web3 钱包集成** - MetaMask 钱包连接
-- 🔗 **智能合约交互** - 直接与合约交互购买课程
-- 🎨 **现代UI设计** - 玻璃质感的响应式界面
+本次更新完全移除了对 `wtf-lll-wallet` 包的依赖，并实现了一个功能更强大的自定义钱包头部组件。
 
-## 技术栈
+## ✨ 新功能
 
-- React 18
-- TypeScript
-- Vite
-- Tailwind CSS
-- Zustand (状态管理)
-- Ethers.js (Web3)
-- Lucide React (图标)
-- React Hot Toast (通知)
+### 🔗 网络切换支持
+- ✅ **Ethereum 主网** (0x1) - 生产环境
+- ✅ **Sepolia 测试网** (0xaa36a7) - 测试环境
+- 🔄 一键切换网络
+- 🟢 网络状态实时显示
 
-## 快速开始
+### 👤 ENS 集成
+- 🏷️ 自动解析 ENS 域名
+- 🖼️ 显示 ENS 头像
+- 🔍 主网 ENS 查询支持
 
-### 1. 安装依赖
+### 💳 钱包功能
+- 🔌 MetaMask 连接/断开
+- 💰 实时余额显示
+- 📋 一键复制地址
+- 🔗 区块浏览器链接
+- 🔄 钱包信息刷新
 
-```bash
-npm install
-```
-
-### 2. 启动开发服务器
-
-```bash
-npm run dev
-```
-
-应用将在 http://localhost:3002 启动
-
-### 3. 构建生产版本
-
-```bash
-npm run build
-npm run preview
-```
-
-## 项目结构
+## 📁 项目结构更新
 
 ```
 src/
-├── components/          # React 组件
-│   ├── Header.tsx       # 头部组件（钱包连接）
-│   ├── CourseMarketplace.tsx  # 课程市场
-│   ├── PurchasedCourses.tsx   # 已购课程
-│   └── WalletProvider.tsx     # 钱包提供者
-├── stores/             # Zustand 状态管理
-│   ├── walletStore.ts  # 钱包状态
-│   └── contractStore.ts # 合约交互
-├── services/           # API 服务
-│   └── api.ts         # 后端 API 调用
-├── utils/             # 工具函数
-│   ├── constants.ts   # 常量配置
-│   └── format.ts      # 格式化工具
-├── types/             # TypeScript 类型
-│   └── index.ts
-├── App.tsx            # 主应用组件
-├── main.tsx           # 应用入口
-└── index.css          # 全局样式
+├── components/
+│   ├── Header.tsx              # 🆕 自定义钱包头部组件
+│   ├── WalletProvider.tsx      # 🔄 更新的钱包提供者
+│   ├── CourseMarketplace.tsx   # 🔄 更新为使用新钱包存储
+│   └── PurchasedCourses.tsx    # 🔄 更新为使用新钱包存储
+├── stores/
+│   ├── walletStore.ts          # 🆕 自定义钱包状态管理
+│   └── contractStore.ts        # 🔄 更新为兼容新钱包接口
+├── types/
+│   └── index.ts               # 🆕 新增钱包和网络类型定义
+├── utils/
+│   └── networks.ts            # 🆕 网络配置和工具函数
+└── services/
+    └── api.ts                 # 📦 保持现有API服务
 ```
 
-## 主要组件
+## 🔧 技术实现
 
-### CourseMarketplace
-- 展示所有可用课程
-- 支持课程购买功能
-- 显示购买状态
-- 过滤用户自己的课程
+### 钱包状态管理
+使用 Zustand 实现轻量级状态管理：
 
-### PurchasedCourses  
-- 显示用户已购买的课程
-- 提供学习入口
-- 显示购买详情
+```typescript
+interface WalletStore {
+  // 状态
+  address: string | null;
+  balance: string;
+  isConnected: boolean;
+  networkId: string | null;
+  ensName: string | null;
+  ensAvatar: string | null;
+  
+  // 操作
+  connectWallet: () => Promise<void>;
+  disconnectWallet: () => void;
+  switchNetwork: (chainId: string) => Promise<void>;
+  updateWalletInfo: () => Promise<void>;
+  getENSInfo: (address: string) => Promise<ENSInfo>;
+}
+```
 
-### Header
-- 钱包连接/断开
-- 显示账户信息和余额
-- 响应钱包状态变化
+### 网络配置
+支持多网络配置：
 
-## 智能合约集成
+```typescript
+export const NETWORK_CONFIGS = {
+  '0x1': {
+    chainName: 'Ethereum Mainnet',
+    nativeCurrency: { symbol: 'ETH', decimals: 18 },
+    rpcUrls: ['https://eth-mainnet.public.blastapi.io'],
+    blockExplorerUrls: ['https://etherscan.io']
+  },
+  '0xaa36a7': {
+    chainName: 'Sepolia Test Network',
+    nativeCurrency: { symbol: 'SepoliaETH', decimals: 18 },
+    rpcUrls: ['https://ethereum-sepolia.publicnode.com'],
+    blockExplorerUrls: ['https://sepolia.etherscan.io']
+  }
+};
+```
 
-应用通过 ethers.js 与部署的智能合约交互：
+## 🎨 UI/UX 特色
 
-- 合约地址：`0xdDD30BD07C402eE78079c35A7DE2F9232ed54Aa4`
-- 支持功能：
-  - 购买课程 (`purchaseCourse`)
-  - 查询课程信息 (`getCourse`)
-  - 查询用户购买记录 (`getUserPurchasedCourses`)
-  - 检查购买状态 (`hasUserPurchasedCourse`)
+### 现代化设计
+- 🌈 渐变背景和毛玻璃效果
+- ✨ 流畅的动画过渡
+- 📱 响应式设计
+- 🌙 深色主题
 
-## 状态管理
+### 交互体验
+- 🖱️ 悬停效果
+- 🎯 直观的网络状态指示器
+- 📍 下拉菜单自动定位
+- 🔔 操作反馈提示
 
-### WalletStore
-- 管理钱包连接状态
-- 处理账户切换
-- 更新余额信息
+### 头部组件功能
+- 🎨 品牌 Logo 和标题
+- 🔗 网络选择器（主网/测试网）
+- 👛 钱包连接按钮
+- 👤 用户信息面板
+- 📋 快捷操作菜单
 
-### ContractStore  
-- 智能合约初始化
-- 合约方法调用
-- 交易状态管理
+## 🚀 使用方法
 
-## API 集成
+### 安装依赖
+```bash
+# 移除旧包
+pnpm remove wtf-lll-wallet
 
-与后端服务通信获取：
-- 课程列表
-- 用户购买记录
-- 购买状态验证
-- 交易记录存储
+# 安装现有依赖
+pnpm install
+```
 
-## 样式设计
+### 启动开发服务器
+```bash
+pnpm dev
+```
 
-采用现代玻璃拟态设计：
-- 半透明玻璃效果
-- 渐变背景
-- 流动动画
-- 响应式布局
-- 深色主题
+### 连接钱包
+1. 点击右上角"连接钱包"按钮
+2. 在 MetaMask 中确认连接
+3. 自动检测网络并显示余额
+4. 可通过网络选择器切换网络
 
-## 环境要求
+### 网络切换
+1. 点击网络选择器
+2. 选择目标网络（主网/测试网）
+3. 在 MetaMask 中确认切换
+4. 自动更新余额和网络状态
 
-- Node.js 16+
-- MetaMask 浏览器扩展
-- 连接到以太坊网络
-- 后端 API 服务运行在 http://localhost:3001
+## 🔐 安全特性
 
-## 开发说明
+- ✅ 只读钱包信息访问
+- ✅ 用户主动授权连接
+- ✅ 网络切换需用户确认
+- ✅ 地址格式化显示
+- ✅ 错误处理和用户提示
 
-### 钱包集成
-- 自动检测 MetaMask
-- 监听账户和网络变化
-- 处理连接错误
+## 🌐 ENS 支持
 
-### 错误处理
-- 友好的错误提示
-- 网络异常重试
-- 交易失败回滚
+- 🔍 自动解析 ENS 域名
+- 🖼️ 获取和显示 ENS 头像
+- 🌐 仅在主网查询（优化性能）
+- 🔄 缓存机制（减少查询次数）
 
-### 性能优化
-- 组件懒加载
-- 状态缓存
-- 防抖处理
+## 🔧 自定义配置
 
-## 脚本命令
+### 添加新网络
+在 `src/utils/networks.ts` 中添加新网络配置：
 
-- `npm run dev` - 开发模式
-- `npm run build` - 构建生产版本
-- `npm run preview` - 预览构建结果
-- `npm run lint` - 代码检查
+```typescript
+export const NETWORK_CONFIGS = {
+  // 现有网络...
+  '0x89': {
+    chainId: '0x89',
+    chainName: 'Polygon Mainnet',
+    // ... 其他配置
+  }
+};
+```
+
+### 修改样式
+所有样式使用 Tailwind CSS，可在组件中直接修改类名。
+
+## 📝 更新日志
+
+### v2.0.0 (当前)
+- ❌ 移除 wtf-lll-wallet 依赖
+- ✅ 实现自定义钱包头部组件
+- ✅ 添加网络切换功能（主网/测试网）
+- ✅ 集成 ENS 域名和头像
+- ✅ 优化用户体验和界面设计
+- ✅ 改进错误处理和提示信息
+
+### v1.x.x (之前)
+- 使用 wtf-lll-wallet 包
+- 基础钱包连接功能
+
+## 🐛 已知问题
+
+- ENS 头像加载可能较慢（依赖网络）
+- 某些 ENS 域名可能无头像
+- 网络切换需要用户在 MetaMask 中确认
+
+## 🔮 未来计划
+
+- [ ] 支持更多网络（Polygon、BSC 等）
+- [ ] 添加钱包历史记录
+- [ ] 实现多钱包支持
+- [ ] 优化 ENS 查询性能
+- [ ] 添加更多钱包提供者（WalletConnect 等）
+
+---
+
+🎉 **恭喜！** 你已经成功移除了 wtf-lll-wallet 依赖，现在拥有了一个功能更强大、界面更美观的自定义钱包组件！
