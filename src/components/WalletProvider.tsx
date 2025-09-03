@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from 'react';
-import useWalletStore from '../stores/walletStore';
+import { useWalletStore } from 'wtf-lll-wallet';
 import useContractStore from '../stores/contractStore';
 
 interface WalletProviderProps {
@@ -7,26 +7,24 @@ interface WalletProviderProps {
 }
 
 export function WalletProvider({ children }: WalletProviderProps) {
-  const { updateBalance } = useWalletStore();
+  const { updateWalletState, setWallet } = useWalletStore();
   const { initializeContract } = useContractStore();
 
   useEffect(() => {
-    // Check if already connected
+    // 检查是否已经连接
     if (window.ethereum) {
       window.ethereum.request({ method: 'eth_accounts' })
-        .then((accounts: string[]) => {
+        .then(async (accounts: string[]) => {
           if (accounts.length > 0) {
-            useWalletStore.setState({ 
-              account: accounts[0], 
-              isConnected: true 
-            });
-            updateBalance();
-            initializeContract();
+            const address = accounts[0];
+            // 使用新的 API 更新钱包状态
+            await updateWalletState(address);
+            await initializeContract();
           }
         })
         .catch(console.error);
     }
-  }, [updateBalance, initializeContract]);
+  }, [updateWalletState, initializeContract]);
 
   return <>{children}</>;
 }
