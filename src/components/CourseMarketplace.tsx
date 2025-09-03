@@ -73,7 +73,7 @@ export function CourseMarketplace() {
       setPurchasedCourses(prev => new Set([...prev, course.courseId]));
       
       // Update wallet balance
-      updateBalance();
+      await updateBalance();
       
     } catch (error) {
       console.error('Purchase failed:', error);

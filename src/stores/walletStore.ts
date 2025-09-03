@@ -1,88 +1,36 @@
+// 重新导出 wtf-lll-wallet 的状态管理，保持向后兼容
+import { useWalletStore as useWtfWalletStore } from 'wtf-lll-wallet';
 import { create } from 'zustand';
-import { ethers } from 'ethers';
-import toast from 'react-hot-toast';
-import { WalletState } from '../types';
 
-const useWalletStore = create<WalletState>((set, get) => ({
-  account: null,
-  isConnected: false,
-  isConnecting: false,
-  balance: '0',
+// 创建兼容层，将新的状态映射到旧的接口
+const useWalletStore = create(() => ({}));
 
-  connectWallet: async () => {
-    if (!window.ethereum) {
-      toast.error('请安装 MetaMask 钱包');
-      return;
-    }
-
-    set({ isConnecting: true });
-
-    try {
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts',
-      });
-
-      if (accounts.length > 0) {
-        const account = accounts[0];
-        set({ 
-          account, 
-          isConnected: true,
-          isConnecting: false 
-        });
-        
-        // Update balance
-        get().updateBalance();
-        
-        toast.success('钱包连接成功');
+// 重新导出，提供兼容接口
+export default function useCompatibleWalletStore() {
+  const wtfStore = useWtfWalletStore();
+  
+  return {
+    // 映射字段名以保持兼容性
+    account: wtfStore.address,
+    isConnected: wtfStore.isConnected,
+    isConnecting: false, // wtf-lll-wallet 没有这个状态，默认为 false
+    balance: wtfStore.balance,
+    
+    // 映射方法
+    connectWallet: wtfStore.connectWallet,
+    disconnectWallet: wtfStore.disconnectWallet,
+    updateBalance: () => {
+      if (wtfStore.address) {
+        return wtfStore.updateWalletState(wtfStore.address);
       }
-    } catch (error: any) {
-      console.error('连接钱包失败:', error);
-      toast.error(error.message || '连接钱包失败');
-      set({ isConnecting: false });
-    }
-  },
-
-  disconnectWallet: () => {
-    set({
-      account: null,
-      isConnected: false,
-      balance: '0'
-    });
-    toast.success('钱包已断开连接');
-  },
-
-  updateBalance: async () => {
-    const { account } = get();
-    if (!account || !window.ethereum) return;
-
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const balance = await provider.getBalance(account);
-      set({ balance: ethers.formatEther(balance) });
-    } catch (error) {
-      console.error('获取余额失败:', error);
-    }
-  },
-}));
-
-// Listen for account changes
-if (typeof window !== 'undefined' && window.ethereum) {
-  window.ethereum.on('accountsChanged', (accounts: string[]) => {
-    const { connectWallet, disconnectWallet } = useWalletStore.getState();
-    if (accounts.length === 0) {
-      disconnectWallet();
-    } else {
-      useWalletStore.setState({ 
-        account: accounts[0], 
-        isConnected: true 
-      });
-      useWalletStore.getState().updateBalance();
-    }
-  });
-
-  window.ethereum.on('chainChanged', () => {
-    window.location.reload();
-  });
+      return Promise.resolve();
+    },
+    
+    // 暴露新的功能
+    switchNetwork: wtfStore.switchNetwork,
+    formatAddress: wtfStore.formatAddress,
+    formatBalance: wtfStore.formatBalance,
+    getCurrentNetwork: wtfStore.getCurrentNetwork,
+    isMetaMaskInstalled: wtfStore.isMetaMaskInstalled,
+  };
 }
-
-export default useWalletStore;
